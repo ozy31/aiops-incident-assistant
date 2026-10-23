@@ -1,0 +1,93 @@
+# -- Number of replicas. The service is stateless.
+replicaCount: 1
+
+image:
+  repository: ghcr.io/ozy31/aiops-incident-assistant
+  tag: ""          # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# -- Non-secret settings, rendered as AIOPS_* environment variables.
+# Any key from the README config table can be added here (without the prefix).
+config:
+  LOG_LEVEL: INFO
+  LLM_PROVIDER: anthropic
+  ANTHROPIC_MODEL: claude-opus-5-5
+  ANTHROPIC_EFFORT: medium
+  LOKI_URL: http://loki-gateway.monitoring.svc
+  PROMETHEUS_URL: http://prometheus-operated.monitoring.svc:9090
+  # ELASTICSEARCH_URL: http://elasticsearch.logging.svc:9200
+  # OPENAI_BASE_URL: http://ollama.ai.svc:11434/v1
+  LOOKBACK_MINUTES: "30"
+  REDACT_EMAILS: "true"
+  REDACT_IPS: "false"
+
+# -- Secrets. Either let the chart create a Secret from `secrets.values`
+# or point `secrets.existingSecret` at one you manage (External Secrets, SOPS, ...).
+# Expected keys: ANTHROPIC_API_KEY, AIOPS_SLACK_WEBHOOK_URL, AIOPS_WEBHOOK_TOKEN,
+# AIOPS_OPENAI_API_KEY, AIOPS_ELASTICSEARCH_API_KEY (all optional).
+secrets:
+  existingSecret: ""
+  values: {}
+    # ANTHROPIC_API_KEY: ""
+    # AIOPS_SLACK_WEBHOOK_URL: ""
+    # AIOPS_WEBHOOK_TOKEN: ""
+
+# -- Kubernetes context source (events + rollouts). Creates read-only RBAC.
+kubernetesContext:
+  enabled: false
+  # -- ClusterRole when true; otherwise a Role in the release namespace only.
+  clusterWide: true
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+service:
+  type: ClusterIP
+  port: 8080
+
+serviceMonitor:
+  # -- Requires the Prometheus Operator CRDs.
+  enabled: false
+  interval: 30s
+  labels: {}
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 384Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+networkPolicy:
+  # -- Restrict ingress to the given namespace selector (e.g. Alertmanager's namespace).
+  enabled: false
+  ingressNamespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: monitoring

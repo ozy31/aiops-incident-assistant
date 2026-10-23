@@ -1,0 +1,79 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install
+        run: |
+          python -m pip install -U pip
+          pip install -e ".[dev]"
+      - name: Ruff
+        run: |
+          ruff check src tests
+          ruff format --check src tests
+      - name: Mypy
+        run: mypy
+      - name: Pytest
+        run: pytest
+      - name: CLI smoke test (offline provider)
+        run: aiops-assist analyze --alert-file examples/alert-sample.json --provider none
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: aiops-incident-assistant:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test container
+        run: |
+          docker run -d --name aiops -p 8080:8080 -e AIOPS_LLM_PROVIDER=none aiops-incident-assistant:ci
+          for i in $(seq 1 20); do curl -fsS localhost:8080/healthz && break; sleep 1; done
+          curl -fsS -X POST 'localhost:8080/webhook/alertmanager?wait=true' \
+            -H 'Content-Type: application/json' --data @examples/alert-sample.json | tee /dev/stderr | grep -q '"accepted":1'
+          docker exec aiops id -u | grep -qx 10001
+      - name: Build demo log generator
+        run: docker build -t aiops-log-generator:ci deploy/compose/log-generator
+
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Lint chart
+        run: |
+          helm lint deploy/helm/aiops-incident-assistant
+          helm lint deploy/helm/aiops-incident-assistant \
+            --set kubernetesContext.enabled=true,serviceMonitor.enabled=true,networkPolicy.enabled=true \
+            --set secrets.values.ANTHROPIC_API_KEY=dummy
+      - name: Render chart
+        run: |
+          helm template t deploy/helm/aiops-incident-assistant > /dev/null
+          helm template t deploy/helm/aiops-incident-assistant \
+            --set kubernetesContext.enabled=true,kubernetesContext.clusterWide=false > /dev/null

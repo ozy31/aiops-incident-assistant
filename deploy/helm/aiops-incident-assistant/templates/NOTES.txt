@@ -1,0 +1,12 @@
+aiops-incident-assistant is listening on
+  http://{{ include "aiops.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}
+
+Point an Alertmanager webhook receiver at:
+  http://{{ include "aiops.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}/webhook/alertmanager
+
+See deploy/helm/alertmanager-receiver.example.yaml in the repository for a full example.
+{{- if and (not .Values.secrets.existingSecret) (not .Values.secrets.values) }}
+
+WARNING: no secrets configured. With LLM_PROVIDER=anthropic you need ANTHROPIC_API_KEY
+(set secrets.values or secrets.existingSecret).
+{{- end }}

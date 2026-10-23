@@ -1,0 +1,52 @@
+# Example Alertmanager configuration routing paging alerts to the assistant
+# *in addition to* your normal receiver (continue: true keeps existing routing).
+route:
+  receiver: default
+  routes:
+    - matchers: ['severity=~"page|critical"']
+      receiver: aiops-assistant
+      continue: true
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+
+receivers:
+  - name: default
+    # ... your existing PagerDuty / Opsgenie / Slack receiver
+  - name: aiops-assistant
+    webhook_configs:
+      - url: http://aiops-incident-assistant.monitoring.svc:8080/webhook/alertmanager
+        send_resolved: false
+        max_alerts: 5
+        http_config:
+          authorization:
+            type: Bearer
+            credentials_file: /etc/alertmanager/secrets/aiops-webhook-token/token
+
+---
+# Equivalent AlertmanagerConfig for the Prometheus Operator / kube-prometheus-stack.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: aiops-assistant
+  namespace: monitoring
+spec:
+  route:
+    receiver: aiops-assistant
+    matchers:
+      - name: severity
+        matchType: "=~"
+        value: "page|critical"
+    continue: true
+  receivers:
+    - name: aiops-assistant
+      webhookConfigs:
+        - url: http://aiops-incident-assistant.monitoring.svc:8080/webhook/alertmanager
+          sendResolved: false
+          maxAlerts: 5
+          httpConfig:
+            authorization:
+              type: Bearer
+              credentials:
+                name: aiops-webhook-token
+                key: token

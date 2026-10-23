@@ -1,0 +1,62 @@
+# Local demo: a fake "checkout-api" pushes logs to Loki and exposes metrics;
+# Prometheus fires HighErrorRate during periodic simulated incidents;
+# Alertmanager sends the webhook to the assistant.
+#
+#   docker compose -f deploy/compose/docker-compose.yml up -d --build
+#   docker compose -f deploy/compose/docker-compose.yml logs -f assistant
+#
+# Without ANTHROPIC_API_KEY the assistant runs with AIOPS_LLM_PROVIDER=none
+# (mechanical digest, no LLM). Export the key and AIOPS_LLM_PROVIDER=anthropic
+# to get real summaries.
+name: aiops-demo
+
+services:
+  loki:
+    image: grafana/loki:3.4.2
+    command: ["-config.file=/etc/loki/config.yaml"]
+    volumes:
+      - ./loki/config.yaml:/etc/loki/config.yaml:ro
+    ports: ["3100:3100"]
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+    ports: ["9090:9090"]
+    depends_on: [alertmanager, log-generator]
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml"]
+    volumes:
+      - ./alertmanager:/etc/alertmanager:ro
+    ports: ["9093:9093"]
+
+  log-generator:
+    build: ./log-generator
+    environment:
+      LOKI_URL: http://loki:3100
+      INCIDENT_EVERY_SECONDS: "360"
+      INCIDENT_DURATION_SECONDS: "150"
+      FIRST_INCIDENT_AFTER_SECONDS: "60"
+    depends_on: [loki]
+
+  assistant:
+    build:
+      context: ../..
+    environment:
+      AIOPS_LLM_PROVIDER: ${AIOPS_LLM_PROVIDER:-none}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AIOPS_ANTHROPIC_MODEL: ${AIOPS_ANTHROPIC_MODEL:-claude-opus-5-5}
+      AIOPS_OPENAI_BASE_URL: ${AIOPS_OPENAI_BASE_URL:-http://host.docker.internal:11434/v1}
+      AIOPS_OPENAI_MODEL: ${AIOPS_OPENAI_MODEL:-llama3.1:8b}
+      AIOPS_SLACK_WEBHOOK_URL: ${AIOPS_SLACK_WEBHOOK_URL:-}
+      AIOPS_LOKI_URL: http://loki:3100
+      AIOPS_PROMETHEUS_URL: http://prometheus:9090
+      AIOPS_LOG_FORMAT: console
+      AIOPS_LOOKBACK_MINUTES: "10"
+    ports: ["8080:8080"]
+    depends_on: [loki]

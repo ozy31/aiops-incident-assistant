@@ -1,0 +1,13 @@
+route:
+  receiver: aiops-assistant
+  group_by: [alertname, namespace, app]
+  group_wait: 10s
+  group_interval: 2m
+  repeat_interval: 1h
+
+receivers:
+  - name: aiops-assistant
+    webhook_configs:
+      - url: http://assistant:8080/webhook/alertmanager
+        send_resolved: false
+        max_alerts: 5

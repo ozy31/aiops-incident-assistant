@@ -1,0 +1,15 @@
+groups:
+  - name: demo
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          sum by (namespace, app) (rate(http_requests_total{status=~"5.."}[1m]))
+            /
+          sum by (namespace, app) (rate(http_requests_total[1m]))
+            > 0.05
+        for: 1m
+        labels:
+          severity: page
+        annotations:
+          summary: "{{ $labels.app }} 5xx ratio is {{ $value | humanizePercentage }}"
+          runbook_url: https://runbooks.example.com/{{ $labels.app }}/high-error-rate

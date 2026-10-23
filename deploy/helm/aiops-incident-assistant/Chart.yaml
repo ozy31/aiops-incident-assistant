@@ -1,0 +1,11 @@
+apiVersion: v2
+name: aiops-incident-assistant
+description: Alertmanager webhook receiver that enriches alerts with logs, metrics and Kubernetes context and asks an LLM for a structured incident summary.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords: [aiops, alertmanager, loki, prometheus, llm, incident-response]
+home: https://github.com/ozy31/aiops-incident-assistant
+maintainers:
+  - name: Ahmet Ozan Gazi
+    url: https://github.com/ozy31

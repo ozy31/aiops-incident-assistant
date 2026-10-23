@@ -1,0 +1,38 @@
+{{- if .Values.kubernetesContext.enabled }}
+{{- $kind := ternary "ClusterRole" "Role" .Values.kubernetesContext.clusterWide }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: {{ $kind }}
+metadata:
+  name: {{ include "aiops.fullname" . }}
+  {{- if not .Values.kubernetesContext.clusterWide }}
+  namespace: {{ .Release.Namespace }}
+  {{- end }}
+  labels:
+    {{- include "aiops.labels" . | nindent 4 }}
+rules:
+  # Read-only: events plus the workload objects needed to describe rollouts.
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "statefulsets"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: {{ $kind }}Binding
+metadata:
+  name: {{ include "aiops.fullname" . }}
+  {{- if not .Values.kubernetesContext.clusterWide }}
+  namespace: {{ .Release.Namespace }}
+  {{- end }}
+  labels:
+    {{- include "aiops.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: {{ $kind }}
+  name: {{ include "aiops.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "aiops.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
