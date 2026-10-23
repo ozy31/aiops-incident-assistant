@@ -1,0 +1,38 @@
+{
+  "_note": "ILLUSTRATIVE EXAMPLE of the output shape. Hand-written for documentation; not captured from a real incident or a real model run.",
+  "alert_name": "HighErrorRate",
+  "fingerprint": "8c1f4b2e9d3a7f60",
+  "provider": "anthropic",
+  "model": "claude-opus-5-5",
+  "summary": {
+    "title": "checkout-api 5xx spike: payments-db connection pool exhausted",
+    "summary": "checkout-api in namespace shop started returning 5xx at about 14:31 UTC. Nearly all error logs in the window are pool timeouts against payments-db with the pool at its maximum of 50 active connections, starting a few minutes after a new ReplicaSet was rolled out.",
+    "probable_cause": "Database connection pool exhaustion towards payments-db, likely triggered by the 14:27 rollout (revision 42), which may have changed pool sizing or introduced slower queries.",
+    "evidence": [
+      "2981x 'PoolTimeoutError: timed out after <DUR> acquiring connection from pool <STR> (active=<NUM> idle=<NUM> max=<NUM>)', first seen 14:30:58",
+      "5xx ratio query: min=0.004 max=0.231 last=0.218 over the window",
+      "ReplicaSet checkout-api-7d9f8b6c5d (revision 42, image checkout-api:1.18.0) created 14:27, previous revision 41",
+      "56x 'reconnect failed: postgres://checkout:<REDACTED>@payments-db:<NUM>/payments too many connections for role <STR>'"
+    ],
+    "blast_radius": "Checkout requests for shop/checkout-api; payments-db may also be near its connection limit, so other clients of that database could be affected.",
+    "suggested_next_checks": [
+      "kubectl -n shop rollout history deploy/checkout-api and diff pool settings between revisions 41 and 42",
+      "Check payments-db active connections and slow query log for the last 30 minutes",
+      "PromQL: sum by (pod) (rate(http_requests_total{app=\"checkout-api\",status=~\"5..\"}[5m])) to see whether all pods are affected",
+      "If the rollout is confirmed as the trigger, consider rolling back to revision 41 (human decision)"
+    ],
+    "confidence": "medium",
+    "confidence_rationale": "Logs, metrics and rollout timing agree, but no database-side metrics were available to confirm the connection limit."
+  },
+  "context_stats": {
+    "raw_log_lines": 3177,
+    "log_templates": 3,
+    "metric_series": 1,
+    "k8s_events": 4,
+    "rollouts": 2,
+    "redactions": {"bearer": 140, "email": 140, "url_credentials": 56},
+    "redactions_total": 336,
+    "prompt_chars": 3410
+  },
+  "errors": []
+}
