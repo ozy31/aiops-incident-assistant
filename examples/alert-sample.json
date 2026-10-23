@@ -1,0 +1,30 @@
+{
+  "version": "4",
+  "groupKey": "{}:{alertname=\"HighErrorRate\"}",
+  "status": "firing",
+  "receiver": "aiops-assistant",
+  "groupLabels": {"alertname": "HighErrorRate"},
+  "commonLabels": {"alertname": "HighErrorRate", "namespace": "shop", "app": "checkout-api", "severity": "page"},
+  "commonAnnotations": {},
+  "externalURL": "http://alertmanager:9093",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "HighErrorRate",
+        "namespace": "shop",
+        "app": "checkout-api",
+        "pod": "checkout-api-7d9f8b6c5d-x2k4p",
+        "severity": "page"
+      },
+      "annotations": {
+        "summary": "checkout-api 5xx ratio above 5% for 5 minutes",
+        "runbook_url": "https://runbooks.example.com/checkout-api/high-error-rate"
+      },
+      "startsAt": "2026-10-20T14:32:00Z",
+      "endsAt": "0001-01-01T00:00:00Z",
+      "generatorURL": "http://prometheus:9090/graph?g0.expr=sum+by+%28app%29+%28rate%28http_requests_total%7Bapp%3D%22checkout-api%22%2Cstatus%3D~%225..%22%7D%5B5m%5D%29%29+%2F+sum+by+%28app%29+%28rate%28http_requests_total%7Bapp%3D%22checkout-api%22%7D%5B5m%5D%29%29+%3E+0.05&g0.tab=1",
+      "fingerprint": "8c1f4b2e9d3a7f60"
+    }
+  ]
+}
