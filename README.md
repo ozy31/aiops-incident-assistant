@@ -222,6 +222,7 @@ All settings are environment variables with the `AIOPS_` prefix (pydantic-settin
 A `.env` file in the working directory is also read; see [`.env.example`](.env.example).
 List and dict values are JSON, for example `AIOPS_LOKI_SELECTOR_LABELS='["namespace","app"]'`.
 
+
 | Variable | Default | Description |
 |---|---|---|
 | `AIOPS_LLM_PROVIDER` | `anthropic` | `anthropic`, `openai` (any OpenAI-compatible endpoint) or `none` (no LLM). |
